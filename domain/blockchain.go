@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"time"
 )
 
 type BlockChain struct {
@@ -110,21 +109,43 @@ func (bc *BlockChain) CalculateBalance(publicKey string) int64 {
 
 func (bc *BlockChain) MineBlock() bool {
 	if len(bc.Pool) == 0 {
+		fmt.Println("🚫 Tidak ada transaksi di pool, mining dibatalkan.")
 		return false
 	}
+
+	fmt.Println("🔨 Memulai proses mining block baru...")
+	fmt.Printf("📦 Jumlah transaksi yang akan ditambang: %d\n", len(bc.Pool))
 
 	transactionsCopy := make([]*Transaction, len(bc.Pool))
 	copy(transactionsCopy, bc.Pool)
 
-	block := &Block{
-		Header: &Header{
-			Time:     time.Now().Unix(),
-			PrevHash: bc.LatestBlock().Hash(),
-			Nonce:    0,
-		},
-		Transactions: transactionsCopy,
-	}
-	bc.Chain = append(bc.Chain, block)
-	bc.Pool = []*Transaction{} // Kosongkan Pool
+	newBlock := NewBlock(0, bc.LatestBlock().Hash(), transactionsCopy)
+
+	bc.Chain = append(bc.Chain, newBlock)
+	bc.Pool = []*Transaction{}
+
+	fmt.Println("✅ Block berhasil ditambang dan ditambahkan ke blockchain!")
+	fmt.Printf("📊 Total block saat ini: %d\n", len(bc.Chain))
+
 	return true
+}
+
+func SaveBlockToDatabase(block *Block) error {
+	f, err := os.OpenFile("database/blockchain.db", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	blockSerialized := BlockSerialized{
+		Value: block,
+	}
+
+	data, err := json.Marshal(blockSerialized)
+	if err != nil {
+		return err
+	}
+
+	_, err = f.Write(append(data, '\n'))
+	return err
 }

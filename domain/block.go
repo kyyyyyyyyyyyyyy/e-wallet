@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 )
 
 type Block struct {
@@ -22,7 +23,7 @@ func NewBlock(nonce int, prevHash string, transactions []*Transaction) *Block {
 	b.Header = &Header{
 		Nonce:    nonce,
 		PrevHash: prevHash,
-		Time:     0,
+		Time:     time.Now().Unix(),
 	}
 	b.Transactions = transactions
 	b.Persist()

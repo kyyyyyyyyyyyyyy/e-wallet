@@ -3,6 +3,7 @@ package controllers
 import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/kyyyyyyyyyyyyyy/sertifikasibc/domain"
+	"github.com/kyyyyyyyyyyyyyy/sertifikasibc/models"
 )
 
 type BlockChainApi struct {
@@ -18,6 +19,20 @@ func (bca *BlockChainApi) TopUpBalance(ctx *fiber.Ctx) error {
 		})
 	}
 
+	// Tambahkan validasi logika
+	if request.To == "" || request.Amount <= 0 {
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": "Invalid recipient or amount",
+		})
+	}
+
+	var user domain.User
+	if err := models.DB.Where("public_key = ?", request.To).First(&user).Error; err != nil {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"message": "Invalid credentials",
+		})
+	}
+
 	isSuccess := bca.Bc.ToUpBalance(request.To, request.Amount)
 	if !isSuccess {
 		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -25,17 +40,17 @@ func (bca *BlockChainApi) TopUpBalance(ctx *fiber.Ctx) error {
 		})
 	}
 
-	// Validasi apakah ada transaksi yang bisa dimasukkan ke block
 	if len(bca.Bc.Pool) == 0 {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": "Top up succeeded, but no transaction to mine",
 		})
 	}
 
-	// Setelah transaksi berhasil, mine blok baru
 	bca.Bc.MineBlock()
 
-	return ctx.JSON(fiber.Map{"message": "Top up success, block mined"})
+	return ctx.JSON(fiber.Map{
+		"message": "Top up success, block mined",
+	})
 }
 
 func (bca *BlockChainApi) Transfer(ctx *fiber.Ctx) error {
